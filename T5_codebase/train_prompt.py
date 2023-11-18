@@ -522,6 +522,12 @@ if __name__ == "__main__":
     #     help='Whether to use MLP layer norm (1 - use, 0 - not use)',
     #     default=0
     # )
-
+    
+    parser.add_argument(
+        '--similarity_threshold',
+        type=int,
+        help='Similarity Threshold of tasks. Learned soft prompts for tasks similar enough get added',
+        default=0.7
+    )
 
     main(parser.parse_args())

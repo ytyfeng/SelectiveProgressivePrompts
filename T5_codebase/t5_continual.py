@@ -92,6 +92,7 @@ class T5ContinualLearner:
                  weight_decay_mlp=None,
                  get_test_subset=True,
                  memory_perc=0.0,
+                 similarity_threshold=0,
                  ):
         
         """Class for CL & prompt tuning experiments with T5 model.
@@ -237,7 +238,7 @@ class T5ContinualLearner:
         # Get task -> data dictionary for CL training
         self.get_test_subset = get_test_subset
         self.tasks_data_dict = self.get_tasks_data_dict(memory_perc=memory_perc)
-
+        self.similarity_threshold = similarity_threshold
 
     # Create optimizer 
     def get_optimizer(self, lr, weight_decay,
@@ -401,12 +402,27 @@ class T5ContinualLearner:
             else: self.multirc_idx = None
         return tasks_data_dict
 
-
+    # x is a vec
+    def softmax(x):
+        exp_x = np.exp(x - np.max(x, axis=-1, keepdims=True))
+        return exp_x / np.sum(exp_x, axis=-1, keepdims=True)
+    
+    def similarityScore(self, task, prev_taskList):
+        dotProducts = []
+        for p in prev_taskList:
+            dot = np.dot(task, p)
+            dotProducts.append(dot)
+        similarity = self.softmax(dotProducts)
+        max = np.max(similarity)
+        return max
+        
+    
     # Perform one train step for prompt tuning (following Lester et al.)
     def train_step_lester(self,
                           batch,
                           task=None,
-                          progressive=True):
+                          progressive=True
+                          ):
         prefix_len = self.prefix_len
         model = self.model
         embed_prompt = self.prefix_MLPs!=None
@@ -426,16 +442,31 @@ class T5ContinualLearner:
             prompt = mlp(model.prompt)
         else:
             prompt = model.prompt
-        # TODO: if tasks similar enough, concat prompts; otherwise, don't concat. 
-        # similarity > 70%
-        # 
-        # 
-        if progressive:
+
+        if self.similarity_threshold > 0:
+            # concatenate similar tasks prompts (Our approach)
+            # generate a list of previous tasks 
+            prevTaskList = self.create_memory_replay_generators(task, split='train_mem')
+            similarity = self.similarityScore(task, prevTaskList)
+            # if tasks similar enough, concat prompts; otherwise, don't concat
+            # similarity > 70%
+            if similarity > self.similarity_threshold:
+                inputs_embeds = torch.concat([prompt.repeat(k, 1, 1),
+                                          self.previous_prompts.repeat(k, 1, 1),
+                                          inputs_embeds], axis=1)[:,:self.seq_len]
+                full_prefix_len = self.previous_prompts.shape[0] + prompt.shape[0]
+            else:
+                inputs_embeds = torch.concat([prompt.repeat(k, 1, 1),
+                                          inputs_embeds], axis=1)[:,:self.seq_len]
+                full_prefix_len = prompt.shape[0]
+        elif progressive:
+            # concat all previous prompts (Progressive Prompts)
             inputs_embeds = torch.concat([prompt.repeat(k, 1, 1),
                                           self.previous_prompts.repeat(k, 1, 1),
                                           inputs_embeds], axis=1)[:,:self.seq_len]
             full_prefix_len = self.previous_prompts.shape[0] + prompt.shape[0] # prefix including all previous tasks
         else:
+            # learn a separate prompt for each task (Original Lester Prompt Tuning)
             inputs_embeds = torch.concat([prompt.repeat(k, 1, 1),
                                           inputs_embeds], axis=1)[:,:self.seq_len]
             full_prefix_len = prompt.shape[0]
@@ -499,8 +530,6 @@ class T5ContinualLearner:
         loss = outputs[0]
 
         return loss
-
-
 
     # Process string for validation (remove pad and end tokens)
     def normalize_text(self, s):
@@ -683,7 +712,7 @@ class T5ContinualLearner:
         return tasks_to_generators
 
 
-    # Perfor memory replay from past tasks
+    # Perform memory replay from past tasks
     def memory_replay(self, tasks_to_generators, progressive):
         # for each memory buffer in tasks_to_generators perform memory replay
         print("Rehearsal on " + str((', ').join(list(tasks_to_generators)) ))
@@ -718,7 +747,8 @@ class T5ContinualLearner:
                        progressive=True,
                        eval_every_N=1,
                        eval_on_all_tasks=False,
-                       data_replay_freq=-1):
+                       data_replay_freq=-1
+                       ):
 
         print('task = ', task)
         if progressive:
@@ -785,6 +815,7 @@ class T5ContinualLearner:
                     print(prompt.shape)
                 else:
                     prompt = None
+
             if progressive:
                 prompt = torch.concat([prompt, self.previous_prompts], axis=0)
 
@@ -812,7 +843,7 @@ class T5ContinualLearner:
                 if self.early_stopping:
                     self.update_best_model(acc, task=task)
                 print(epoch, task, '->', val_acc[-1])
-
+        
         if progressive:
             self.progress_previous_prompts(task=task)
 
@@ -831,7 +862,7 @@ class T5ContinualLearner:
                         progressive=True,
                         eval_every_N=1,
                         test_eval_after_every_task=False, # only needed for methods with catastrophic forgetting
-                        data_replay_freq=-1,
+                        data_replay_freq=-1
                         ):
         results_dict = {}
         if self.get_test_subset: results_dict['test'] = {}
@@ -840,12 +871,12 @@ class T5ContinualLearner:
             eval_on_all_tasks = False if progressive or len(task_list)==1 else True
             eval_frq = eval_every_N if not eval_on_all_tasks else int(epochs//3)
             val_acc = self.train_one_task(task, epochs,
-                                          progressive=progressive,
-                                          eval_every_N=eval_frq,
-                                          #eval_on_all_tasks=False, # too slow
-                                          data_replay_freq=data_replay_freq,
-                                          eval_on_all_tasks=eval_on_all_tasks,
-                                          )
+                                        progressive=progressive,
+                                        eval_every_N=eval_frq,
+                                        #eval_on_all_tasks=False, # too slow
+                                        data_replay_freq=data_replay_freq,
+                                        eval_on_all_tasks=eval_on_all_tasks
+                                        )
             print(task, val_acc)
             results_dict[task] = val_acc
 
@@ -886,7 +917,9 @@ class T5ContinualLearner:
 
 
     # Perform multi-task training
-    def multi_task_training(self, num_epochs=5, progressive=False, save_path=''):
+    def multi_task_training(self, num_epochs=5, 
+                        progressive=False, 
+                        save_path=''):
         tasks_data_dict = self.tasks_data_dict
         val_scores = {x: [] for x in list(tasks_data_dict)}
         # getting index of the largest dataset (other datasets will be cycled)

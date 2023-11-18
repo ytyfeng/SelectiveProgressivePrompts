@@ -29,7 +29,8 @@ def main(args):
                                            mlp_layer_norm=args.mlp_layer_norm==1,
                                            bottleneck_size=args.bottleneck_size,
                                            get_test_subset=args.get_test_subset==1,
-                                           memory_perc=args.memory_perc
+                                           memory_perc=args.memory_perc,
+                                           similarity_threshold=args.similarity_threshold
                                            )
     if args.get_test_subset==0:
         print("Not creating test subset")
@@ -53,8 +54,8 @@ def main(args):
                                                         progressive=args.progressive==1,
                                                         eval_every_N=eval_every_N,
                                                         test_eval_after_every_task=args.test_eval_after_every_task==1,
-                                                        data_replay_freq=args.data_replay_freq,
-                                                        )
+                                                        data_replay_freq=args.data_replay_freq
+                                                        )                                                       
         np.save(os.path.join(save_path, 'results_dict.npy'), results_dict)
         np.save(os.path.join(save_path, 'prompts.npy'), continual_learner.previous_prompts.detach().cpu().numpy())
 
@@ -227,6 +228,13 @@ if __name__ == "__main__":
         type=int,
         help='MLP bottleneck size',
         default=800
+    )
+
+    parser.add_argument(
+        '--similarity_threshold',
+        type=int,
+        help='Similarity Threshold of tasks. Learned soft prompts for tasks similar enough get added',
+        default=0.7
     )
 
     main(parser.parse_args())
