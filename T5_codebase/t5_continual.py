@@ -443,7 +443,7 @@ class T5ContinualLearner:
         else:
             prompt = model.prompt
 
-        if self.similarity_threshold > 0:
+        if self.similarity_threshold > 0 and task is not None:
             # concatenate similar tasks prompts (Our approach)
             # generate a list of previous tasks 
             prevTaskList = self.create_memory_replay_generators(task, split='train_mem')
