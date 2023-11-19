@@ -448,6 +448,7 @@ class T5ContinualLearner:
             # generate a list of previous tasks 
             prevTaskList = self.create_memory_replay_generators(task, split='train_mem')
             similarity = self.similarityScore(task, prevTaskList)
+            print("Current Task: " + task + " Similarity with previous tasks: " + similarity)
             # if tasks similar enough, concat prompts; otherwise, don't concat
             # similarity > 70%
             if similarity > self.similarity_threshold:
@@ -456,6 +457,7 @@ class T5ContinualLearner:
                                           inputs_embeds], axis=1)[:,:self.seq_len]
                 full_prefix_len = self.previous_prompts.shape[0] + prompt.shape[0]
             else:
+                # maybe keep track of previous prompts and not throw them away? 
                 inputs_embeds = torch.concat([prompt.repeat(k, 1, 1),
                                           inputs_embeds], axis=1)[:,:self.seq_len]
                 full_prefix_len = prompt.shape[0]
@@ -877,7 +879,7 @@ class T5ContinualLearner:
                                         data_replay_freq=data_replay_freq,
                                         eval_on_all_tasks=eval_on_all_tasks
                                         )
-            print(task, val_acc)
+            # print(task, val_acc)
             results_dict[task] = val_acc
 
             print('Calculating test acc ...')
@@ -909,6 +911,8 @@ class T5ContinualLearner:
                                         print_outputs=True)
                     results_dict['test'][task] = acc
             # saving results dict after each task
+
+            print("Test accuracy for task ", task, results_dict['test'])
             np.save(os.path.join(save_path, 'results_dict.npy'), results_dict)
 
         return results_dict
