@@ -413,7 +413,7 @@ class T5ContinualLearner:
     def similarityScore(self, currentInput, prev_Inputs):
         dotProducts = []
         for prev in prev_Inputs:
-            dot = np.dot(currentInput, prev)
+            dot = np.dot(currentInput, np.transpose(prev, (0, 2, 1)))
             dotProducts.append(dot)
         similarity = self.softmax(dotProducts)
         max = np.max(similarity)
