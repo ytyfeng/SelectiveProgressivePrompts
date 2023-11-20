@@ -453,7 +453,7 @@ class T5ContinualLearner:
             # generate a list of previous tasks 
             # prevTaskList = self.create_memory_replay_generators(task, split='train_mem')
             similarity = self.similarityScore(inputs_embeds.detach().cpu().numpy(), self.input_embeddings_list)
-            print("Similarity with previous input embeds: " + similarity)
+            print("Similarity with previous input embeds: " + str(similarity))
             # if tasks similar enough, concat prompts; otherwise, don't concat
             # similarity > 70%
             if similarity > self.similarity_threshold:
