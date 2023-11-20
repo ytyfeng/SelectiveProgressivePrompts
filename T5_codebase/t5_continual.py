@@ -408,13 +408,19 @@ class T5ContinualLearner:
         exp_x = np.exp(x - np.max(x, axis=-1, keepdims=True))
         return exp_x / np.sum(exp_x, axis=-1, keepdims=True)
     
-    # currentInput = current input embedding vec
-    # prev_Inputs = a list of previous input embeddings
+    # currentInput = current input embedding vec with shape of [batch_size, seq_len, embedding_size]
+    # prev_Inputs = a list of previous input embeddings of shape [embedding_size]
     def similarityScore(self, currentInput, prev_Inputs):
+        k = currentInput.shape[0]
         dotProducts = []
-        for prev in prev_Inputs:
-            dot = np.dot(currentInput, np.transpose(prev, (0, 2, 1)))
-            dotProducts.append(dot)
+        for i in range(k):
+            # embedding for a single element in a batch with shape of [512,1024]
+            input_embed = currentInput[i]
+            # 1D embedding vec of [1024] for the whole sequence
+            input_embed_1024 = np.sum(input_embed, axis=0)
+            for prev in prev_Inputs:
+                dot = np.dot(input_embed_1024, prev)
+                dotProducts.append(dot)
         similarity = self.softmax(dotProducts)
         max = np.max(similarity)
         return max
@@ -438,11 +444,18 @@ class T5ContinualLearner:
         lm_labels = batch["target_ids"]
         lm_labels[lm_labels[:, :] == tokenizer.pad_token_id] = -100
 
+        # shape of inputs_embeds = [4,512,1024]
         inputs_embeds = model.encoder.embed_tokens(batch["source_ids"])
-        # append inputs_embeds to global list of input embeddings
-        self.input_embeddings_list.append(inputs_embeds.detach().cpu().numpy())
-
+        inputs_embeds_np = inputs_embeds.detach().cpu().numpy()
         k = inputs_embeds.shape[0]
+        for i in range(k):
+            # embedding for a single element in a batch with shape of [512,1024]
+            input_embed = inputs_embeds_np[i]
+            # 1D embedding vec of [1024] for the whole sequence
+            input_embed_1024 = np.sum(input_embed, axis=0)
+            # append inputs_embeds to global list of input embeddings
+            self.input_embeddings_list.append(input_embed_1024)
+
         if embed_prompt:
             prompt = mlp(model.prompt)
         else:
@@ -452,6 +465,7 @@ class T5ContinualLearner:
             # concatenate similar tasks prompts (Our approach)
             # generate a list of previous tasks 
             # prevTaskList = self.create_memory_replay_generators(task, split='train_mem')
+
             similarity = self.similarityScore(inputs_embeds.detach().cpu().numpy(), self.input_embeddings_list)
             print("Similarity with previous input embeds: " + str(similarity))
             # if tasks similar enough, concat prompts; otherwise, don't concat
