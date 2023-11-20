@@ -239,6 +239,7 @@ class T5ContinualLearner:
         self.get_test_subset = get_test_subset
         self.tasks_data_dict = self.get_tasks_data_dict(memory_perc=memory_perc)
         self.similarity_threshold = similarity_threshold
+        self.input_embeddings_list = []
 
     # Create optimizer 
     def get_optimizer(self, lr, weight_decay,
@@ -407,10 +408,12 @@ class T5ContinualLearner:
         exp_x = np.exp(x - np.max(x, axis=-1, keepdims=True))
         return exp_x / np.sum(exp_x, axis=-1, keepdims=True)
     
-    def similarityScore(self, task, prev_taskList):
+    # currentInput = current input embedding vec
+    # prev_Inputs = a list of previous input embeddings
+    def similarityScore(self, currentInput, prev_Inputs):
         dotProducts = []
-        for p in prev_taskList:
-            dot = np.dot(task, p)
+        for prev in prev_Inputs:
+            dot = np.dot(currentInput, prev)
             dotProducts.append(dot)
         similarity = self.softmax(dotProducts)
         max = np.max(similarity)
@@ -436,6 +439,8 @@ class T5ContinualLearner:
         lm_labels[lm_labels[:, :] == tokenizer.pad_token_id] = -100
 
         inputs_embeds = model.encoder.embed_tokens(batch["source_ids"])
+        # append inputs_embeds to global list of input embeddings
+        self.input_embeddings_list.append(inputs_embeds)
 
         k = inputs_embeds.shape[0]
         if embed_prompt:
@@ -443,12 +448,12 @@ class T5ContinualLearner:
         else:
             prompt = model.prompt
 
-        if self.similarity_threshold > 0 and task is not None:
+        if self.similarity_threshold > 0:
             # concatenate similar tasks prompts (Our approach)
             # generate a list of previous tasks 
-            prevTaskList = self.create_memory_replay_generators(task, split='train_mem')
-            similarity = self.similarityScore(task, prevTaskList)
-            print("Current Task: " + task + " Similarity with previous tasks: " + similarity)
+            # prevTaskList = self.create_memory_replay_generators(task, split='train_mem')
+            similarity = self.similarityScore(inputs_embeds, self.input_embeddings_list)
+            print("Current Task: " + task + " Similarity with previous input embeds: " + similarity)
             # if tasks similar enough, concat prompts; otherwise, don't concat
             # similarity > 70%
             if similarity > self.similarity_threshold:
