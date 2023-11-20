@@ -440,7 +440,7 @@ class T5ContinualLearner:
 
         inputs_embeds = model.encoder.embed_tokens(batch["source_ids"])
         # append inputs_embeds to global list of input embeddings
-        self.input_embeddings_list.append(inputs_embeds)
+        self.input_embeddings_list.append(inputs_embeds.detach().cpu().numpy())
 
         k = inputs_embeds.shape[0]
         if embed_prompt:
@@ -452,7 +452,7 @@ class T5ContinualLearner:
             # concatenate similar tasks prompts (Our approach)
             # generate a list of previous tasks 
             # prevTaskList = self.create_memory_replay_generators(task, split='train_mem')
-            similarity = self.similarityScore(inputs_embeds, self.input_embeddings_list)
+            similarity = self.similarityScore(inputs_embeds.detach().cpu().numpy(), self.input_embeddings_list)
             print("Current Task: " + task + " Similarity with previous input embeds: " + similarity)
             # if tasks similar enough, concat prompts; otherwise, don't concat
             # similarity > 70%
