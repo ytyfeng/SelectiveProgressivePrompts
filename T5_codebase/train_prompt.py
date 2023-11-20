@@ -525,7 +525,7 @@ if __name__ == "__main__":
     
     parser.add_argument(
         '--similarity_threshold',
-        type=int,
+        type=float,
         help='Similarity Threshold of tasks. Learned soft prompts for tasks similar enough get added',
         default=0.7
     )
