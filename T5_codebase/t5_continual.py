@@ -417,6 +417,7 @@ class T5ContinualLearner:
         for i in range(k):
             # embedding for a single element in a batch with shape of [512,1024]
             input_embed = currentInput[i]
+            
             # 1D embedding vec of [1024] for the whole sequence
             input_embed_1024 = np.sum(input_embed, axis=0)
             for prev in prev_Inputs:
@@ -461,6 +462,7 @@ class T5ContinualLearner:
             # concatenate similar tasks prompts (Our approach)
             # generate a list of previous tasks 
             # prevTaskList = self.create_memory_replay_generators(task, split='train_mem')
+            
             similarity = self.similarityScore(inputs_embeds.detach().cpu().numpy(), self.input_embeddings_list)
             print("Similarity with previous input embeds: " + str(similarity))
             # if tasks similar enough, concat prompts; otherwise, don't concat
@@ -494,7 +496,9 @@ class T5ContinualLearner:
             input_embed_1024 = np.sum(input_embed, axis=0)
             # append inputs_embeds to global list of input embeddings
             self.input_embeddings_list.append(input_embed_1024)
+            print(input_embed_1024)
 
+        
         source_mask_updated = torch.concat( (batch["source_mask"][0][0].repeat(k,full_prefix_len),
                                              batch["source_mask"]), axis=1)[:,:self.seq_len]
 
