@@ -2,6 +2,7 @@ import torch
 from torch import nn
 import pandas as pd
 import numpy as np
+import copy
 from tqdm.auto import tqdm
 import logging, os, argparse
 
@@ -446,26 +447,20 @@ class T5ContinualLearner:
 
         # shape of inputs_embeds = [4,512,1024]
         inputs_embeds = model.encoder.embed_tokens(batch["source_ids"])
-        inputs_embeds_np = inputs_embeds.detach().cpu().numpy()
         k = inputs_embeds.shape[0]
-        for i in range(k):
-            # embedding for a single element in a batch with shape of [512,1024]
-            input_embed = inputs_embeds_np[i]
-            # 1D embedding vec of [1024] for the whole sequence
-            input_embed_1024 = np.sum(input_embed, axis=0)
-            # append inputs_embeds to global list of input embeddings
-            self.input_embeddings_list.append(input_embed_1024)
+
+        k_copy = copy.deepcopy(k)
+        inputs_embeds_np = copy.deepcopy(inputs_embeds.detach().cpu().numpy())
 
         if embed_prompt:
             prompt = mlp(model.prompt)
         else:
             prompt = model.prompt
 
-        if self.similarity_threshold > 0:
+        if self.similarity_threshold > 0 and len(self.input_embeddings_list) > 0:
             # concatenate similar tasks prompts (Our approach)
             # generate a list of previous tasks 
             # prevTaskList = self.create_memory_replay_generators(task, split='train_mem')
-
             similarity = self.similarityScore(inputs_embeds.detach().cpu().numpy(), self.input_embeddings_list)
             print("Similarity with previous input embeds: " + str(similarity))
             # if tasks similar enough, concat prompts; otherwise, don't concat
@@ -491,6 +486,14 @@ class T5ContinualLearner:
             inputs_embeds = torch.concat([prompt.repeat(k, 1, 1),
                                           inputs_embeds], axis=1)[:,:self.seq_len]
             full_prefix_len = prompt.shape[0]
+
+        for i in range(k_copy):
+            # embedding for a single element in a batch with shape of [512,1024]
+            input_embed = inputs_embeds_np[i]
+            # 1D embedding vec of [1024] for the whole sequence
+            input_embed_1024 = np.sum(input_embed, axis=0)
+            # append inputs_embeds to global list of input embeddings
+            self.input_embeddings_list.append(input_embed_1024)
 
         source_mask_updated = torch.concat( (batch["source_mask"][0][0].repeat(k,full_prefix_len),
                                              batch["source_mask"]), axis=1)[:,:self.seq_len]
