@@ -1,5 +1,6 @@
 import torch
 from torch import nn
+import torch.nn.functional as F
 import pandas as pd
 import numpy as np
 import copy
@@ -412,18 +413,20 @@ class T5ContinualLearner:
     # currentInput = current input embedding vec with shape of [batch_size, seq_len, embedding_size]
     # prev_Inputs = a list of previous input embeddings of shape [embedding_size]
     def similarityScore(self, currentInput, prev_Inputs):
+        cos = nn.CosineSimilarity()
         k = currentInput.shape[0]
-        dotProducts = []
+        similarities = []
         for i in range(k):
             # embedding for a single element in a batch with shape of [512,1024]
             input_embed = currentInput[i]
-            
             # 1D embedding vec of [1024] for the whole sequence
             input_embed_1024 = np.sum(input_embed, axis=0)
             for prev in prev_Inputs:
-                dot = np.dot(input_embed_1024, prev)
-                dotProducts.append(dot)
-        similarity = self.softmax(dotProducts)
+                if input_embed_1024 == prev:
+                    print("SAME EMBEDDING VEC!!!")
+                sim = cos(input_embed_1024, prev)
+                similarities.append(sim)
+        similarity = self.softmax(similarities)
         max = np.max(similarity)
         return max
         
