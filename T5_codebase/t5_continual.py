@@ -424,7 +424,7 @@ class T5ContinualLearner:
             for prev in prev_Inputs:
                 if (input_embed_1024 - prev).any():
                     print("SAME EMBEDDING VEC!!!")
-                sim = cos(input_embed_1024, prev)
+                sim = cos(torch.from_numpy(input_embed_1024), torch.from_numpy(prev))
                 similarities.append(sim)
         similarity = self.softmax(similarities)
         max = np.max(similarity)
