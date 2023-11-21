@@ -421,12 +421,14 @@ class T5ContinualLearner:
             input_embed = currentInput[i]
             # 1D embedding vec of [1024] for the whole sequence
             input_embed_1024 = np.sum(input_embed, axis=0)
+            input_embed_tensor = torch.from_numpy(input_embed_1024.astype(np.float32))
+            input_embed_tensor = torch.nn.functional.normalize(input_embed_tensor, p=2, dim=0)
             for prev in prev_Inputs:
                 if not (input_embed_1024 - prev).any():
                     print("SAME EMBEDDING VEC!!!")
                     continue
-                input_embed_tensor = torch.from_numpy(input_embed_1024.astype(np.float32))
                 prev_tensor = torch.from_numpy(prev.astype(np.float32))
+                prev_tensor = torch.nn.functional.normalize(prev_tensor, p=2, dim=0)
                 sim = cos(input_embed_tensor, prev_tensor)
                 similarities.append(sim.item())
         #similarity = self.softmax(similarities)
