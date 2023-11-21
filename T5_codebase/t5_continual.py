@@ -413,7 +413,7 @@ class T5ContinualLearner:
     # currentInput = current input embedding vec with shape of [batch_size, seq_len, embedding_size]
     # prev_Inputs = a list of previous input embeddings of shape [embedding_size]
     def similarityScore(self, currentInput, prev_Inputs):
-        cos = nn.CosineSimilarity()
+        cos = nn.CosineSimilarity(dim=0)
         k = currentInput.shape[0]
         similarities = []
         for i in range(k):
@@ -424,10 +424,15 @@ class T5ContinualLearner:
             for prev in prev_Inputs:
                 if (input_embed_1024 - prev).any():
                     print("SAME EMBEDDING VEC!!!")
-                sim = cos(torch.from_numpy(input_embed_1024), torch.from_numpy(prev))
-                similarities.append(sim)
-        similarity = self.softmax(similarities)
-        max = np.max(similarity)
+                    continue
+                input_embed_tensor = torch.from_numpy(input_embed_1024.astype(np.float32))
+                prev_tensor = torch.from_numpy(prev.astype(np.float32))
+                sim = cos(input_embed_tensor, prev_tensor)
+                similarities.append(sim.item())
+        #similarity = self.softmax(similarities)
+        #max = np.max(similarity)
+        similarity = torch.softmax(torch.tensor(similarities), dim=0)
+        max = torch.max(similarity).item()
         return max
         
     
