@@ -422,7 +422,7 @@ class T5ContinualLearner:
             # 1D embedding vec of [1024] for the whole sequence
             input_embed_1024 = np.sum(input_embed, axis=0)
             for prev in prev_Inputs:
-                if input_embed_1024 == prev:
+                if (input_embed_1024 - prev).any():
                     print("SAME EMBEDDING VEC!!!")
                 sim = cos(input_embed_1024, prev)
                 similarities.append(sim)
