@@ -506,7 +506,7 @@ class T5ContinualLearner:
             input_embed_1024 = np.sum(input_embed, axis=0)
             # append inputs_embeds to global list of input embeddings
             self.input_embeddings_list.append(input_embed_1024)
-            print(input_embed_1024)
+            # print(input_embed_1024)
 
         
         source_mask_updated = torch.concat( (batch["source_mask"][0][0].repeat(k,full_prefix_len),
