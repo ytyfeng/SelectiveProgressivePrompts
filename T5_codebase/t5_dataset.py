@@ -199,7 +199,8 @@ class T5Dataset:
         dict_final = {"source_ids": source['input_ids'],
                       "source_mask": source['attention_mask'],
                       "target_ids": target['input_ids'],
-                      "target_mask": target['attention_mask']}
+                      "target_mask": target['attention_mask'],
+                      "text": text}
         return dict_final
 
 
@@ -289,7 +290,8 @@ class T5Dataset:
                                                                             prefix_list=prefix_list),
                                           batched=False)
             encoded_dataset.set_format(type='torch', columns=['source_ids', 'source_mask',
-                                                              'target_ids', 'target_mask'])
+                                                              'target_ids', 'target_mask',
+                                                              'text'])
             dataloader = DataLoader(encoded_dataset, batch_size=batch_size)
 
             return dataloader
@@ -308,7 +310,8 @@ class T5Dataset:
                                                                                  prefix_list=prefix_list),
                                               batched=False)
                 encoded_dataset.set_format(type='torch', columns=['source_ids', 'source_mask',
-                                                                  'target_ids', 'target_mask'])
+                                                                  'target_ids', 'target_mask',
+                                                                  'text'])
                 dataloader = DataLoader(encoded_dataset, batch_size=batch_size)
                 dataloaders_val_test.append(dataloader)
 

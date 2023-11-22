@@ -406,9 +406,9 @@ class T5ContinualLearner:
         return tasks_data_dict
 
     # x is a vec
-    def softmax(self, x):
-        exp_x = np.exp(x - np.max(x, axis=-1, keepdims=True))
-        return exp_x / np.sum(exp_x, axis=-1, keepdims=True)
+    # def softmax(self, x):
+    #     exp_x = np.exp(x - np.max(x, axis=-1, keepdims=True))
+    #     return exp_x / np.sum(exp_x, axis=-1, keepdims=True)
     
     # currentInput = current input embedding vec with shape of [batch_size, seq_len, embedding_size]
     # prev_Inputs = a list of previous input embeddings of shape [embedding_size]
@@ -419,20 +419,20 @@ class T5ContinualLearner:
         for i in range(k):
             # embedding for a single element in a batch with shape of [512,1024]
             input_embed = currentInput[i]
+            input_embed = torch.mean(input_embed, dim=0)
             # 1D embedding vec of [1024] for the whole sequence
-            input_embed_1024 = np.sum(input_embed, axis=0)
-            input_embed_tensor = torch.from_numpy(input_embed_1024.astype(np.float32))
-            input_embed_tensor = torch.nn.functional.normalize(input_embed_tensor, p=2, dim=0)
+            input_embed_1024 = input_embed.squeeze()
+            input_embed_tensor = F.normalize(input_embed_1024, p=2, dim=0)
+
             for prev in prev_Inputs:
-                if not (input_embed_1024 - prev).any():
+                prev = prev.squeeze()
+                if torch.equal(input_embed_tensor, prev):
                     print("SAME EMBEDDING VEC!!!")
                     continue
-                prev_tensor = torch.from_numpy(prev.astype(np.float32))
-                prev_tensor = torch.nn.functional.normalize(prev_tensor, p=2, dim=0)
+                prev_tensor = F.normalize(prev, p=2, dim=0)
                 sim = cos(input_embed_tensor, prev_tensor)
                 similarities.append(sim.item())
-        #similarity = self.softmax(similarities)
-        #max = np.max(similarity)
+
         if not similarities:
             return 0
         similarity = torch.softmax(torch.tensor(similarities), dim=0)
@@ -443,8 +443,8 @@ class T5ContinualLearner:
     # Perform one train step for prompt tuning (following Lester et al.)
     def train_step_lester(self,
                           batch,
-                          task=None,
-                          progressive=True
+                          task,
+                          progressive
                           ):
         prefix_len = self.prefix_len
         model = self.model
@@ -453,17 +453,34 @@ class T5ContinualLearner:
             assert task!=None
             mlp = self.prefix_MLPs[task]
         tokenizer = self.tokenizer
-
+        print("Batch text: ")
+        # print(self.tasks_data_dict[task]['train'].dataset['text'])
+        print(batch["text"])
         batch = {k: batch[k].to(self.device) for k in batch}
         lm_labels = batch["target_ids"]
         lm_labels[lm_labels[:, :] == tokenizer.pad_token_id] = -100
 
         # shape of inputs_embeds = [4,512,1024]
         inputs_embeds = model.encoder.embed_tokens(batch["source_ids"])
+
+        # TODO: get the input embedding from the last hidden state of the encoder
+        # TODO: from the raw input text
+        similarityEmbeds = copy.deepcopy(inputs_embeds)
+        similarity_mask = copy.deepcopy(batch["source_mask"])
+        similarity_encoder_outputs = model.encoder(
+                                attention_mask=similarity_mask,
+                                inputs_embeds=similarityEmbeds,
+                                head_mask=None,  
+                                output_attentions=None,  
+                                output_hidden_states=None, 
+                                return_dict=None,  
+                            )
+        # shape [4, 512, 1024]
+        similarity_embedding = similarity_encoder_outputs.last_hidden_state
+
         k = inputs_embeds.shape[0]
 
         k_copy = copy.deepcopy(k)
-        inputs_embeds_np = copy.deepcopy(inputs_embeds.detach().cpu().numpy())
 
         if embed_prompt:
             prompt = mlp(model.prompt)
@@ -474,8 +491,8 @@ class T5ContinualLearner:
             # concatenate similar tasks prompts (Our approach)
             # generate a list of previous tasks 
             # prevTaskList = self.create_memory_replay_generators(task, split='train_mem')
-            
-            similarity = self.similarityScore(inputs_embeds.detach().cpu().numpy(), self.input_embeddings_list)
+            # inputs_embeds [k, 512, 1024], prevTaskList [[1, 1024], [1, 1024], ...]
+            similarity = self.similarityScore(similarity_embedding, self.input_embeddings_list)
             print("Similarity with previous input embeds: " + str(similarity))
             # if tasks similar enough, concat prompts; otherwise, don't concat
             # similarity > 70%
@@ -501,11 +518,12 @@ class T5ContinualLearner:
                                           inputs_embeds], axis=1)[:,:self.seq_len]
             full_prefix_len = prompt.shape[0]
 
+        # append inputs_embeds to global list of input embeddings
         for i in range(k_copy):
             # embedding for a single element in a batch with shape of [512,1024]
-            input_embed = inputs_embeds_np[i]
+            input_embed = similarity_embedding[i]
             # 1D embedding vec of [1024] for the whole sequence
-            input_embed_1024 = np.sum(input_embed, axis=0)
+            input_embed_1024 = torch.mean(input_embed, dim=0)
             # append inputs_embeds to global list of input embeddings
             self.input_embeddings_list.append(input_embed_1024)
             # print(input_embed_1024)
