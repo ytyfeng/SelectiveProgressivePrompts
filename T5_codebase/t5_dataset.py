@@ -4,7 +4,7 @@ import numpy as np
 from torch.utils.data import Dataset, DataLoader
 from datasets import load_dataset
 import datasets
-
+from t5_dataloader import CustomDataset, CustomDataLoader
 
 class T5Dataset:
     def __init__(self, tokenizer, task):
@@ -182,7 +182,7 @@ class T5Dataset:
                           #padding=False,
                           padding='max_length',
                           max_length=max_length)
-
+        
         if task=='stsb':
             target = str(examples[label_key])[:3]
         elif task=='record':
@@ -200,7 +200,8 @@ class T5Dataset:
                       "source_mask": source['attention_mask'],
                       "target_ids": target['input_ids'],
                       "target_mask": target['attention_mask'],
-                      "text": text}
+                      "text": text,
+                      }
         return dict_final
 
 
@@ -290,10 +291,8 @@ class T5Dataset:
                                                                             prefix_list=prefix_list),
                                           batched=False)
             encoded_dataset.set_format(type='torch', columns=['source_ids', 'source_mask',
-                                                              'target_ids', 'target_mask',
-                                                              'text'])
-            dataloader = DataLoader(encoded_dataset, batch_size=batch_size)
-
+                                                              'target_ids', 'target_mask', 'text'])
+            dataloader = CustomDataLoader(encoded_dataset, batch_size=batch_size)
             return dataloader
         
         # Creating an extra test set from the selected data split
@@ -310,9 +309,8 @@ class T5Dataset:
                                                                                  prefix_list=prefix_list),
                                               batched=False)
                 encoded_dataset.set_format(type='torch', columns=['source_ids', 'source_mask',
-                                                                  'target_ids', 'target_mask',
-                                                                  'text'])
-                dataloader = DataLoader(encoded_dataset, batch_size=batch_size)
+                                                                  'target_ids', 'target_mask','text'])
+                dataloader = CustomDataLoader(encoded_dataset, batch_size=batch_size)
                 dataloaders_val_test.append(dataloader)
 
             return dataloaders_val_test

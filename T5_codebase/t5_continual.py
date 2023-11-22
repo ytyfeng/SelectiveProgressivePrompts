@@ -11,7 +11,7 @@ import t5_dataset
 from itertools import cycle
 from copy import deepcopy
 from transformers import AdamW
-from transformers import T5Tokenizer, T5ForConditionalGeneration
+from transformers import T5Tokenizer, T5ForConditionalGeneration, T5EncoderModel
 from sklearn.metrics import matthews_corrcoef, f1_score
 
 
@@ -405,6 +405,22 @@ class T5ContinualLearner:
             else: self.multirc_idx = None
         return tasks_data_dict
 
+
+    def getEmbeddingFromText(self, text):
+        encoder_model = T5EncoderModel.from_pretrained("t5-large")
+        k = text.shape[0]
+        embeddings = []
+        for i in range(k):
+            inputs = self.tokenizer(text[i], return_tensors="pt", padding=True, truncation=True)
+            with torch.no_grad():
+                outputs = encoder_model(input_ids=inputs['input_ids'], attention_mask=inputs['attention_mask'])
+                embeddings = outputs.last_hidden_state
+                # mean pool embedding vecs for each token in the sequence
+                embeddings_mean = torch.mean(embeddings, dim=1)
+                embeddings.append(embeddings_mean)
+        # returns [k, 1024]
+        return embeddings
+    
     # x is a vec
     # def softmax(self, x):
     #     exp_x = np.exp(x - np.max(x, axis=-1, keepdims=True))
@@ -419,7 +435,6 @@ class T5ContinualLearner:
         for i in range(k):
             # embedding for a single element in a batch with shape of [512,1024]
             input_embed = currentInput[i]
-            input_embed = torch.mean(input_embed, dim=0)
             # 1D embedding vec of [1024] for the whole sequence
             input_embed_1024 = input_embed.squeeze()
             input_embed_tensor = F.normalize(input_embed_1024, p=2, dim=0)
@@ -455,7 +470,7 @@ class T5ContinualLearner:
         tokenizer = self.tokenizer
         print("Batch text: ")
         # print(self.tasks_data_dict[task]['train'].dataset['text'])
-        print(batch["text"])
+        print(batch['text'])
         batch = {k: batch[k].to(self.device) for k in batch}
         lm_labels = batch["target_ids"]
         lm_labels[lm_labels[:, :] == tokenizer.pad_token_id] = -100
@@ -465,19 +480,9 @@ class T5ContinualLearner:
 
         # TODO: get the input embedding from the last hidden state of the encoder
         # TODO: from the raw input text
-        similarityEmbeds = copy.deepcopy(inputs_embeds)
-        similarity_mask = copy.deepcopy(batch["source_mask"])
-        similarity_encoder_outputs = model.encoder(
-                                attention_mask=similarity_mask,
-                                inputs_embeds=similarityEmbeds,
-                                head_mask=None,  
-                                output_attentions=None,  
-                                output_hidden_states=None, 
-                                return_dict=None,  
-                            )
-        # shape [4, 512, 1024]
-        similarity_embedding = similarity_encoder_outputs.last_hidden_state
-
+        text = batch["text"]
+        similarity_embedding = self.getEmbeddingFromText(text)
+       
         k = inputs_embeds.shape[0]
 
         k_copy = copy.deepcopy(k)
@@ -522,10 +527,8 @@ class T5ContinualLearner:
         for i in range(k_copy):
             # embedding for a single element in a batch with shape of [512,1024]
             input_embed = similarity_embedding[i]
-            # 1D embedding vec of [1024] for the whole sequence
-            input_embed_1024 = torch.mean(input_embed, dim=0)
             # append inputs_embeds to global list of input embeddings
-            self.input_embeddings_list.append(input_embed_1024)
+            self.input_embeddings_list.append(input_embed)
             # print(input_embed_1024)
 
         
