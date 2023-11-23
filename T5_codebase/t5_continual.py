@@ -858,6 +858,7 @@ class T5ContinualLearner:
 
         for epoch in range(epochs):
             print(epoch)
+            self.input_embeddings_list = []
             model.train()
             if self.prefix_MLPs!=None:
                 mlp.train()
@@ -895,6 +896,8 @@ class T5ContinualLearner:
                 # performing data replay on all previous tasks
                 if data_replay_freq != -1 and i%data_replay_freq == 0:
                     self.memory_replay(tasks_to_generators, progressive)
+
+                
 
             # evaluate accuracy after each epoch
             if self.prefix_MLPs!=None:
@@ -1024,6 +1027,7 @@ class T5ContinualLearner:
         device = self.device
 
         for epoch in range(num_epochs):
+            self.input_embeddings_list = []
             print(epoch)
 
             dataloaders_list = [tasks_data_dict[t]['train'] if j==idx_biggest_task else cycle(tasks_data_dict[t]['train']) \
