@@ -472,9 +472,9 @@ class T5ContinualLearner:
             assert task!=None
             mlp = self.prefix_MLPs[task]
         tokenizer = self.tokenizer
-        print("Batch train text: ")
+        # print("Batch train text: ")
         # print(self.tasks_data_dict[task]['train'].dataset['text'])
-        print(batch['train_text'])
+        # print(batch['train_text'])
         batch = {k: batch[k].to(self.device) if isinstance(batch[k], torch.Tensor) else batch[k] for k in batch}
         lm_labels = batch["target_ids"]
         lm_labels[lm_labels[:, :] == tokenizer.pad_token_id] = -100
@@ -672,8 +672,8 @@ class T5ContinualLearner:
             inputs_embeds = model.encoder.embed_tokens(batch["source_ids"]).to(self.device)
 
             batch_indices = batch['source_ids'].detach().cpu().numpy()  # Convert source_ids to CPU numpy array for indexing
-            batch_val_text = [val_text[idx] for idx in batch_indices.shape[0]]
-
+            batch_val_text = [val_text[i] for _ in batch_indices.shape[0]]
+  
             # Add val texts to the batch
             batch['val_text'] = batch_val_text
 
