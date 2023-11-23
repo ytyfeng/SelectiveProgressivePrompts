@@ -419,9 +419,9 @@ class T5ContinualLearner:
             inputs = self.tokenizer(text, return_tensors="pt", padding=True, truncation=True)
             with torch.no_grad():
                 outputs = encoder_model(input_ids=inputs['input_ids'], attention_mask=inputs['attention_mask'])
-                embeddings = outputs.last_hidden_state
+                embeddings_vec = outputs.last_hidden_state
                 # mean pool embedding vecs for each token in the sequence
-                embeddings_mean = torch.mean(embeddings, dim=1)
+                embeddings_mean = torch.mean(embeddings_vec, dim=1)
                 embeddings.append(embeddings_mean)
         # returns [k, 1024]
         return embeddings
