@@ -292,12 +292,6 @@ class T5Dataset:
                                           batched=False)
             
             text_data = [item['text'] for item in encoded_dataset]
-            print("text_data: ", text_data)
-            # print(encoded_dataset)
-            #encoded_dataset[0]['text']
-            # text_data = encoded_dataset['text']
-            # print(text_data)
-            # get first element's text: encoded_dataset[0]["text"]
             encoded_dataset.set_format(type='torch', columns=['source_ids', 
                                                               'source_mask', 
                                                               'target_ids', 
@@ -305,7 +299,8 @@ class T5Dataset:
             
 
             dataloader = DataLoader(encoded_dataset, batch_size=batch_size)
-            return dataloader
+            # get two args: dataloader, text_data = get_final_ds()
+            return dataloader, text_data
         
         # Creating an extra test set from the selected data split
         else:
@@ -321,7 +316,7 @@ class T5Dataset:
                                                                                  prefix_list=prefix_list),
                                               batched=False)
                 text_data = [item['text'] for item in encoded_dataset]
-                print("text_data 2: ", text_data)
+                # print("text_data 2: ", text_data)
                 encoded_dataset.set_format(type='torch', columns=['source_ids', 
                                                               'source_mask', 
                                                               'target_ids', 
@@ -329,4 +324,4 @@ class T5Dataset:
                 dataloader = DataLoader(encoded_dataset, batch_size=batch_size)
                 dataloaders_val_test.append(dataloader)
 
-            return dataloaders_val_test
+            return dataloaders_val_test, text_data
