@@ -36,8 +36,8 @@ if __name__ == "__main__":
     model = T5EncoderModel.from_pretrained("t5-large")
     prev_Inputs = []
     text = "hello world"
-    text2 = "hi world"
-    text3 = "hello hello hello hello world world"
+    text2 = "hello world"
+    text3 = "hello world"
     inputs = tokenizer(text, return_tensors="pt", padding=True, truncation=True)
     inputs2 = tokenizer(text2, return_tensors="pt", padding=True, truncation=True)
     inputs3 = tokenizer(text3, return_tensors="pt", padding=True, truncation=True)

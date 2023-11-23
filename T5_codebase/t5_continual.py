@@ -873,7 +873,7 @@ class T5ContinualLearner:
                 # shape (4, 512)
                 batch_indices = batch['source_ids'].detach().cpu().numpy()  # Convert source_ids to CPU numpy array for indexing
                 
-                batch_train_text = [train_text[idx] for idx in range(batch_indices.shape[0])]
+                batch_train_text = [train_text[i] for _ in range(batch_indices.shape[0])]
 
             
                 # Add train texts to the batch
