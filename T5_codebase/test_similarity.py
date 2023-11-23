@@ -41,7 +41,8 @@ def similarityScore(currentInput, prev_Inputs):
             print("cos similarities: " , similarities)
         if not similarities:
             return 0
-        similarity = F.softmax(torch.tensor(similarities), dim=0)
+        # similarity = F.softmax(torch.tensor(similarities), dim=0)
+        similarity = torch.tensor(similarities)
         print("similarity: ", similarity.detach().cpu().numpy().tolist())
         max = torch.max(similarity).item()
         return max
