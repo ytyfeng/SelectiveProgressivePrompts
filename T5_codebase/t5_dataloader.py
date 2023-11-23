@@ -6,10 +6,11 @@ T = TypeVar('T')
 _worker_init_fn_t = Callable[[int], None]
 
 class CustomDataset(Dataset):
-    def __init__(self, data):
+    def __init__(self, data, text=""):
         super().__init__()
         # Data should be a list of tuples (input, target)
         self.data = data
+        self.text = text
 
     def __len__(self):
         return len(self.data)
@@ -19,11 +20,11 @@ class CustomDataset(Dataset):
 
 # Custom DataLoader:
 class CustomDataLoader(DataLoader):
-    def __init__(self, dataset: Dataset[T_co], batch_size: Optional[int] = 1):
+    def __init__(self, dataset: CustomDataset[T_co], batch_size: Optional[int] = 1):
         super().__init__(dataset, batch_size=batch_size)
 
         # You can add any custom initialization here
-        self.text = dataset['text']
+        self.text = dataset.text
     def getText(self):
         return self.text
     # Example: Overriding the __iter__ method
