@@ -433,13 +433,12 @@ class T5ContinualLearner:
     
     # currentInput = current input embedding vec with shape of [batch_size, seq_len, embedding_size]
     # prev_Inputs = a list of previous input embeddings of shape [embedding_size]
-    def similarityScore(self, currentInput, prev_Inputs):
+    def similarityScore(self, currentInputs, prev_Inputs):
         cos = nn.CosineSimilarity(dim=0)
-        k = currentInput.shape[0]
         similarities = []
-        for i in range(k):
+        for input in currentInputs:
             # embedding for a single element in a batch with shape of [512,1024]
-            input_embed = currentInput[i]
+            input_embed = input
             # 1D embedding vec of [1024] for the whole sequence
             input_embed_1024 = input_embed.squeeze()
             input_embed_tensor = F.normalize(input_embed_1024, p=2, dim=0)
