@@ -290,12 +290,20 @@ class T5Dataset:
                                                                             max_length_target=target_len,
                                                                             prefix_list=prefix_list),
                                           batched=False)
+            
+            text_data = [item['text'] for item in encoded_dataset]
+            print("text_data: ", text_data)
+            # print(encoded_dataset)
+            #encoded_dataset[0]['text']
+            # text_data = encoded_dataset['text']
+            # print(text_data)
             # get first element's text: encoded_dataset[0]["text"]
-            encoded_dataset.set_format(type={'source_ids': 'torch', 
-                                             'source_mask': 'torch', 
-                                             'target_ids': 'torch', 
-                                             'target_mask': 'torch', 
-                                             'text': 'text'})
+            encoded_dataset.set_format(type='torch', columns=['source_ids', 
+                                                              'source_mask', 
+                                                              'target_ids', 
+                                                              'target_mask'])
+            
+
             dataloader = DataLoader(encoded_dataset, batch_size=batch_size)
             return dataloader
         
@@ -312,11 +320,13 @@ class T5Dataset:
                                                                                  max_length_target=target_len,
                                                                                  prefix_list=prefix_list),
                                               batched=False)
+                text_data = [item['text'] for item in encoded_dataset]
+                print("text_data 2: ", text_data)
                 encoded_dataset.set_format(type={'source_ids': 'torch', 
                                              'source_mask': 'torch', 
                                              'target_ids': 'torch', 
                                              'target_mask': 'torch', 
-                                             'text': 'text'})
+                                             })
                 dataloader = DataLoader(encoded_dataset, batch_size=batch_size)
                 dataloaders_val_test.append(dataloader)
 
