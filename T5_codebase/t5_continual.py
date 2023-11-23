@@ -672,7 +672,7 @@ class T5ContinualLearner:
             inputs_embeds = model.encoder.embed_tokens(batch["source_ids"]).to(self.device)
 
             batch_indices = batch['source_ids'].detach().cpu().numpy()  # Convert source_ids to CPU numpy array for indexing
-            batch_val_text = [val_text[i] for _ in batch_indices.shape[0]]
+            batch_val_text = [val_text[i] for _ in range(batch_indices.shape[0])]
   
             # Add val texts to the batch
             batch['val_text'] = batch_val_text
