@@ -412,12 +412,11 @@ class T5ContinualLearner:
         return tasks_data_dict
 
 
-    def getEmbeddingFromText(self, text):
+    def getEmbeddingFromText(self, texts):
         encoder_model = T5EncoderModel.from_pretrained("t5-large")
-        k = text.shape[0]
         embeddings = []
-        for i in range(k):
-            inputs = self.tokenizer(text[i], return_tensors="pt", padding=True, truncation=True)
+        for text in texts:
+            inputs = self.tokenizer(text, return_tensors="pt", padding=True, truncation=True)
             with torch.no_grad():
                 outputs = encoder_model(input_ids=inputs['input_ids'], attention_mask=inputs['attention_mask'])
                 embeddings = outputs.last_hidden_state
