@@ -454,8 +454,8 @@ class T5ContinualLearner:
 
         if not similarities:
             return 0
-        similarity = torch.softmax(torch.tensor(similarities), dim=0)
-        max = torch.max(similarity).item()
+        # similarity = torch.softmax(torch.tensor(similarities), dim=0)
+        max = torch.max(torch.tensor(similarities)).item()
         return max
         
     
