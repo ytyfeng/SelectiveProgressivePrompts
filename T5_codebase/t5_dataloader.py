@@ -5,8 +5,8 @@ T_co = TypeVar('T_co', covariant=True)
 T = TypeVar('T')
 _worker_init_fn_t = Callable[[int], None]
 
-class CustomDataset(Dataset):
-    def __init__(self, data, text=""):
+class CustomDataset(Generic[T]):
+    def __init__(self, data: List, text=""):
         super().__init__()
         # Data should be a list of tuples (input, target)
         self.data = data
