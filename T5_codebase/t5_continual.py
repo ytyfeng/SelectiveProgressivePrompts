@@ -484,8 +484,11 @@ class T5ContinualLearner:
 
         # TODO: get the input embedding from the last hidden state of the encoder
         # TODO: from the raw input text
-        text = batch["train_text"]
-        similarity_embedding = self.getEmbeddingFromText(text)
+        #text = batch["train_text"]
+        texts = [tokenizer.decode(ids) for ids in batch['source_ids']]
+        print("Texts: ")
+        print(texts)
+        similarity_embedding = self.getEmbeddingFromText(texts)
        
         k = inputs_embeds.shape[0]
 
@@ -668,7 +671,6 @@ class T5ContinualLearner:
         for i, batch in enumerate(tqdm(dataloader_val)):
             # batch = {k:batch[k].to(self.device) for k in batch}
             batch = {k: batch[k].to(self.device) if isinstance(batch[k], torch.Tensor) else batch[k] for k in batch}
-            
             inputs_embeds = model.encoder.embed_tokens(batch["source_ids"]).to(self.device)
 
             batch_indices = batch['source_ids'].detach().cpu().numpy()  # Convert source_ids to CPU numpy array for indexing
