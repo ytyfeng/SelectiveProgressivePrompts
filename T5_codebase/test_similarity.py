@@ -5,7 +5,7 @@ from transformers import T5Tokenizer, T5EncoderModel
 import numpy as np
 
 
-def getEmbeddingFromText(self, texts):
+def getEmbeddingFromText(texts):
         encoder_model = T5EncoderModel.from_pretrained("t5-large")
         embeddings = []
         for text in texts:
