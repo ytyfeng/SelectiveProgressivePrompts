@@ -477,7 +477,7 @@ class T5ContinualLearner:
         print("Batch train text: ")
         # print(self.tasks_data_dict[task]['train'].dataset['text'])
         print(batch['train_text'])
-        batch = {k: batch[k].to(self.device) for k in batch}
+        batch = {k: batch[k].to(self.device) if isinstance(batch[k], torch.Tensor) else batch[k] for k in batch}
         lm_labels = batch["target_ids"]
         lm_labels[lm_labels[:, :] == tokenizer.pad_token_id] = -100
 
@@ -568,7 +568,8 @@ class T5ContinualLearner:
         model = self.model
         tokenizer = self.tokenizer
 
-        batch = {k: batch[k].to(self.device) for k in batch}
+        batch = {k: batch[k].to(self.device) if isinstance(batch[k], torch.Tensor) else batch[k] for k in batch}
+        # batch = {k: batch[k].to(self.device) for k in batch}
         lm_labels = batch["target_ids"]
         lm_labels[lm_labels[:, :] == tokenizer.pad_token_id] = -100
 
