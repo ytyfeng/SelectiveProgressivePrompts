@@ -671,7 +671,7 @@ class T5ContinualLearner:
             inputs_embeds = model.encoder.embed_tokens(batch["source_ids"]).to(self.device)
 
             batch_indices = batch['source_ids'].detach().cpu().numpy()  # Convert source_ids to CPU numpy array for indexing
-            batch_val_text = [val_text[idx] for idx in batch_indices]
+            batch_val_text = [val_text[idx] for idx in batch_indices.shape[0]]
 
             # Add val texts to the batch
             batch['val_text'] = batch_val_text
@@ -868,9 +868,12 @@ class T5ContinualLearner:
             for i, batch in enumerate(tqdm(dataloader_train)):
                 batch = {k:batch[k].to('cuda') for k in batch}
                 # Extract train texts corresponding to the source_ids indices
+                # shape (4, 512)
                 batch_indices = batch['source_ids'].detach().cpu().numpy()  # Convert source_ids to CPU numpy array for indexing
-                batch_train_text = [train_text[idx] for idx in batch_indices]
+                
+                batch_train_text = [train_text[idx] for idx in range(batch_indices.shape[0])]
 
+            
                 # Add train texts to the batch
                 batch['train_text'] = batch_train_text
 
