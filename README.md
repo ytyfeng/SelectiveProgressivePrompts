@@ -1,9 +1,18 @@
-# Progressive Prompts
+# Selective Progressive Prompts: 
+## Improve Forward Transfer by Selectively Concatenating Prompts from Prior Tasks in Continual Learning
 
-**Our work on Progressive Prompts is accepted to ICLR 2023!** 🎉
+**Ty Feng, Raj Kunamaneni, Srivatsan Srikanth, Henry Chou**
 
-This repo includes an original implementation of Anastasia Razdaibiedina, Yuning Mao, Rui Hou, Madian Khabsa, Mike Lewis and Amjad Almahairi. ["Progressive Prompts: Continual Learning for Language Models"](https://arxiv.org/abs/2301.12314), ICLR 2023.
 
+We based our Selective Progressive Prompts implementation on the original Progressive Prompts implementation of Anastasia Razdaibiedina, Yuning Mao, Rui Hou, Madian Khabsa, Mike Lewis and Amjad Almahairi. ["Progressive Prompts: Continual Learning for Language Models"](https://arxiv.org/abs/2301.12314), ICLR 2023.
+
+### Our Selective Progressive Prompts Approach
+Instead of concatenating every prompt from prior tasks like what Progressive Prompts does, we perform cosine similarity check between each input embedding and the input embeddings from prior tasks. If there is at least one prior input embedding similar enough to the current input embedding, we would use the previously learned soft prompts when learning the current task. Otherwise, we would learn a separate prompt for the current task. We have a similarity_threshold parameter (default=0.7) that specifies when the model should concatenate previous prompts. Our approach should reduce the negative influence of prompts learned from irrelevant prior tasks when learning the current task.
+
+We used the T5 language model for our work.
+
+
+The following is from the Progressive Prompts repo:
 ### Table of contents
 * [Introduction](#star2-introduction)
 * [What's in this repository](#question-whats-in-this-repository)
