@@ -3,8 +3,9 @@ from torch import nn
 import torch.nn.functional as F
 import pandas as pd
 import numpy as np
+import copy
 from tqdm.auto import tqdm
-import logging, os, argparse, copy
+import logging, os, argparse
 
 import t5_dataset
 from itertools import cycle
@@ -242,7 +243,6 @@ class T5ContinualLearner:
         self.similarity_threshold = similarity_threshold
         self.input_embeddings_list = []
 
-
     # Create optimizer 
     def get_optimizer(self, lr, weight_decay,
                       task=None, mlp_lr=None, weight_decay_mlp=None): # task is used for MLP
@@ -387,18 +387,24 @@ class T5ContinualLearner:
                                            split=val_split, return_test=self.get_test_subset)
 
             tasks_data_dict[task]['train'] = dataloader_train
+            #tasks_data_dict[task]['train_text'] = text_train
 
             if memory_perc>0:
                 k_mem = max(1, int(len(dataloader_train) * self.batch_size * memory_perc) )
                 dataloader_mem = ds2.get_final_ds(**data_params, k=k_mem, split='train')
                 tasks_data_dict[task]['train_mem'] = dataloader_mem
+                #tasks_data_dict[task]['train_mem_text'] = text_mem
 
             if self.get_test_subset:
                 dataloader_val, dataloader_test = dataloaders[0], dataloaders[1]
+                # text_val, text_test = texts[0], texts[1]
                 tasks_data_dict[task]['val'] = dataloader_val
+                #tasks_data_dict[task]['val_text'] = text_val
                 tasks_data_dict[task]['test'] = dataloader_test
+                #tasks_data_dict[task]['test_text'] = text_test
             else:
                 tasks_data_dict[task]['val'] = dataloaders
+                #tasks_data_dict[task]['val_text'] = texts
 
             if task == 'multirc' and k_val==-1:
                 self.multirc_idx = ds2.multirc_idx # saving multirc idx for later computation
@@ -419,6 +425,8 @@ class T5ContinualLearner:
                 embeddings.append(embeddings_mean)
         # returns [k, 1024]
         return embeddings
+    
+
     
     # currentInput = current input embedding vec with shape of [batch_size, seq_len, embedding_size]
     # prev_Inputs = a list of previous input embeddings of shape [embedding_size]
@@ -446,12 +454,14 @@ class T5ContinualLearner:
         # similarity = torch.softmax(torch.tensor(similarities), dim=0)
         max = torch.max(torch.tensor(similarities)).item()
         return max
-
+        
+    
     # Perform one train step for prompt tuning (following Lester et al.)
     def train_step_lester(self,
                           batch,
-                          task=None,
-                          progressive=True):
+                          task,
+                          progressive
+                          ):
         prefix_len = self.prefix_len
         model = self.model
         embed_prompt = self.prefix_MLPs!=None
@@ -459,28 +469,35 @@ class T5ContinualLearner:
             assert task!=None
             mlp = self.prefix_MLPs[task]
         tokenizer = self.tokenizer
-
-        batch = {k: batch[k].to(self.device) for k in batch}
+        # print("Batch train text: ")
+        # print(self.tasks_data_dict[task]['train'].dataset['text'])
+        # print(batch['train_text'])
+        batch = {k:batch[k].to(self.device) for k in batch}
+        # batch = {k: batch[k].to(self.device) if isinstance(batch[k], torch.Tensor) else batch[k] for k in batch}
         lm_labels = batch["target_ids"]
         lm_labels[lm_labels[:, :] == tokenizer.pad_token_id] = -100
 
+        # shape of inputs_embeds = [4,512,1024]
         inputs_embeds = model.encoder.embed_tokens(batch["source_ids"])
 
-        #added from previous
+        # TODO: get the input embedding from the last hidden state of the encoder
+        # TODO: from the raw input text
+        #text = batch["train_text"]
         texts = [tokenizer.decode(ids) for ids in batch['source_ids']]
         texts = [self.normalize_text(x) for x in texts]
         print("Texts: ")
         print(texts)
         similarity_embedding = self.getEmbeddingFromText(texts)
-        
+       
         k = inputs_embeds.shape[0]
+
+        k_copy = copy.deepcopy(k)
 
         if embed_prompt:
             prompt = mlp(model.prompt)
         else:
             prompt = model.prompt
 
-        #
         if self.similarity_threshold > 0 and len(self.input_embeddings_list) > 0:
             # concatenate similar tasks prompts (Our approach)
             # generate a list of previous tasks 
@@ -501,23 +518,26 @@ class T5ContinualLearner:
                                           inputs_embeds], axis=1)[:,:self.seq_len]
                 full_prefix_len = prompt.shape[0]
         elif progressive:
+            # concat all previous prompts (Progressive Prompts)
             inputs_embeds = torch.concat([prompt.repeat(k, 1, 1),
                                           self.previous_prompts.repeat(k, 1, 1),
                                           inputs_embeds], axis=1)[:,:self.seq_len]
             full_prefix_len = self.previous_prompts.shape[0] + prompt.shape[0] # prefix including all previous tasks
         else:
+            # learn a separate prompt for each task (Original Lester Prompt Tuning)
             inputs_embeds = torch.concat([prompt.repeat(k, 1, 1),
                                           inputs_embeds], axis=1)[:,:self.seq_len]
             full_prefix_len = prompt.shape[0]
+
         # append inputs_embeds to global list of input embeddings
-        for i in range(k):
+        for i in range(k_copy):
             # embedding for a single element in a batch with shape of [512,1024]
             input_embed = similarity_embedding[i]
             # append inputs_embeds to global list of input embeddings
             self.input_embeddings_list.append(input_embed)
             # print(input_embed_1024)
-        #
 
+        
         source_mask_updated = torch.concat( (batch["source_mask"][0][0].repeat(k,full_prefix_len),
                                              batch["source_mask"]), axis=1)[:,:self.seq_len]
 
@@ -548,6 +568,7 @@ class T5ContinualLearner:
         model = self.model
         tokenizer = self.tokenizer
 
+        # batch = {k: batch[k].to(self.device) if isinstance(batch[k], torch.Tensor) else batch[k] for k in batch}
         batch = {k: batch[k].to(self.device) for k in batch}
         lm_labels = batch["target_ids"]
         lm_labels[lm_labels[:, :] == tokenizer.pad_token_id] = -100
@@ -577,8 +598,6 @@ class T5ContinualLearner:
         loss = outputs[0]
 
         return loss
-
-
 
     # Process string for validation (remove pad and end tokens)
     def normalize_text(self, s):
@@ -646,9 +665,18 @@ class T5ContinualLearner:
         corr, total, f1 = 0, 0, 0
         y_true, y_pred = [], []
 
+        # val_text = self.tasks_data_dict[task]['val_text']
+
         for i, batch in enumerate(tqdm(dataloader_val)):
             batch = {k:batch[k].to(self.device) for k in batch}
+            # batch = {k: batch[k].to(self.device) if isinstance(batch[k], torch.Tensor) else batch[k] for k in batch}
             inputs_embeds = model.encoder.embed_tokens(batch["source_ids"]).to(self.device)
+
+            #batch_indices = batch['source_ids'].detach().cpu().numpy()  # Convert source_ids to CPU numpy array for indexing
+            #batch_val_text = [val_text[i] for _ in range(batch_indices.shape[0])]
+  
+            # Add val texts to the batch
+            #batch['val_text'] = batch_val_text
 
             if prompt!=None:
                 k = inputs_embeds.shape[0]
@@ -761,7 +789,7 @@ class T5ContinualLearner:
         return tasks_to_generators
 
 
-    # Perfor memory replay from past tasks
+    # Perform memory replay from past tasks
     def memory_replay(self, tasks_to_generators, progressive):
         # for each memory buffer in tasks_to_generators perform memory replay
         print("Rehearsal on " + str((', ').join(list(tasks_to_generators)) ))
@@ -796,7 +824,8 @@ class T5ContinualLearner:
                        progressive=True,
                        eval_every_N=1,
                        eval_on_all_tasks=False,
-                       data_replay_freq=-1):
+                       data_replay_freq=-1
+                       ):
 
         print('task = ', task)
         if progressive:
@@ -822,6 +851,9 @@ class T5ContinualLearner:
         target_len = self.task_to_target_len[task]
         dataloader_train = self.tasks_data_dict[task]['train']
         dataloader_val = self.tasks_data_dict[task]['val']
+        #train_text = self.tasks_data_dict[task]['train_text']
+        #val_text = self.tasks_data_dict[task]['val_text']
+        
 
         val_acc = []
 
@@ -837,7 +869,19 @@ class T5ContinualLearner:
 
 
             for i, batch in enumerate(tqdm(dataloader_train)):
+                # batch = {k: batch[k].to('cuda') if isinstance(batch[k], torch.Tensor) else batch[k] for k in batch}
                 batch = {k:batch[k].to('cuda') for k in batch}
+                # Extract train texts corresponding to the source_ids indices
+                # shape (4, 512)
+                #batch_indices = batch['source_ids'].detach().cpu().numpy()  # Convert source_ids to CPU numpy array for indexing
+                
+                #batch_train_text = [train_text[i] for _ in range(batch_indices.shape[0])]
+
+            
+                # Add train texts to the batch
+                #batch['train_text'] = batch_train_text
+
+                # batch['train_text'] = [train_text[j] for j in batch['source_ids'].indices]
 
                 if self.prefix_len>0: # prompt tuning
                     loss = self.train_step_lester(batch,
@@ -854,6 +898,8 @@ class T5ContinualLearner:
                 if data_replay_freq != -1 and i%data_replay_freq == 0:
                     self.memory_replay(tasks_to_generators, progressive)
 
+                
+
             # evaluate accuracy after each epoch
             if self.prefix_MLPs!=None:
                 mlp.eval()
@@ -864,6 +910,7 @@ class T5ContinualLearner:
                     print(prompt.shape)
                 else:
                     prompt = None
+
             if progressive:
                 prompt = torch.concat([prompt, self.previous_prompts], axis=0)
 
@@ -891,7 +938,7 @@ class T5ContinualLearner:
                 if self.early_stopping:
                     self.update_best_model(acc, task=task)
                 print(epoch, task, '->', val_acc[-1])
-
+        
         if progressive:
             self.progress_previous_prompts(task=task)
 
@@ -910,7 +957,7 @@ class T5ContinualLearner:
                         progressive=True,
                         eval_every_N=1,
                         test_eval_after_every_task=False, # only needed for methods with catastrophic forgetting
-                        data_replay_freq=-1,
+                        data_replay_freq=-1
                         ):
         results_dict = {}
         if self.get_test_subset: results_dict['test'] = {}
@@ -919,13 +966,13 @@ class T5ContinualLearner:
             eval_on_all_tasks = False if progressive or len(task_list)==1 else True
             eval_frq = eval_every_N if not eval_on_all_tasks else int(epochs//3)
             val_acc = self.train_one_task(task, epochs,
-                                          progressive=progressive,
-                                          eval_every_N=eval_frq,
-                                          #eval_on_all_tasks=False, # too slow
-                                          data_replay_freq=data_replay_freq,
-                                          eval_on_all_tasks=eval_on_all_tasks,
-                                          )
-            print(task, val_acc)
+                                        progressive=progressive,
+                                        eval_every_N=eval_frq,
+                                        #eval_on_all_tasks=False, # too slow
+                                        data_replay_freq=data_replay_freq,
+                                        eval_on_all_tasks=eval_on_all_tasks
+                                        )
+            # print(task, val_acc)
             results_dict[task] = val_acc
 
             print('Calculating test acc ...')
@@ -957,6 +1004,8 @@ class T5ContinualLearner:
                                         print_outputs=True)
                     results_dict['test'][task] = acc
             # saving results dict after each task
+
+            print("Test accuracy for task ", task, results_dict['test'])
             np.save(os.path.join(save_path, 'results_dict.npy'), results_dict)
 
         return results_dict
@@ -965,7 +1014,9 @@ class T5ContinualLearner:
 
 
     # Perform multi-task training
-    def multi_task_training(self, num_epochs=5, progressive=False, save_path=''):
+    def multi_task_training(self, num_epochs=5, 
+                        progressive=False, 
+                        save_path=''):
         tasks_data_dict = self.tasks_data_dict
         val_scores = {x: [] for x in list(tasks_data_dict)}
         # getting index of the largest dataset (other datasets will be cycled)
@@ -994,6 +1045,7 @@ class T5ContinualLearner:
                     batch = {k: v.to(device) for k, v in batch_combined[task_num].items()}
                     #loss = self.trainer.pass_batch(batch, list(tasks_data_dict)[task_num], self.device, cls_idx=cls_idx, only_output_loss=True)
                     if self.prefix_len>0: # prompt tuning
+                        # TODO: only concatenate prompts for similar tasks
                         loss = self.train_step_lester(batch,
                                                       task=task if self.prefix_MLPs!=None else None,
                                                       progressive=progressive)
@@ -1027,5 +1079,4 @@ class T5ContinualLearner:
                 np.save(os.path.join(save_path, 'results_dict.npy'), results_dict)
             pbar.close()
 
-        return results_dict 
-    
+        return results_dict
