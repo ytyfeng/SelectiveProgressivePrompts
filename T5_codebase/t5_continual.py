@@ -469,8 +469,8 @@ class T5ContinualLearner:
         #added from previous
         texts = [tokenizer.decode(ids) for ids in batch['source_ids']]
         texts = [self.normalize_text(x) for x in texts]
-        print("Texts: ")
-        print(texts)
+        # print("Texts: ")
+        # print(texts)
         similarity_embedding = self.getEmbeddingFromText(texts)
         
         k = inputs_embeds.shape[0]
