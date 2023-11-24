@@ -380,31 +380,31 @@ class T5ContinualLearner:
                 k = self.select_k_per_class if (self.select_k_per_class<=500 and task not in ['cb', 'copa', 'wsc', 'wsc_bool']) else -1
                 k_val = -1
             if self.get_test_subset==False: k_val = -1 # use all val set
-            dataloader_train, text_train = ds2.get_final_ds(**data_params, k=k, split='train')
+            dataloader_train = ds2.get_final_ds(**data_params, k=k, split='train')
             print('k = ', k, '  k-val = ',k_val)
             val_split = 'validation' if (task in self.glue_datasets) or (task in self.superglue_datasets) else 'test'
-            dataloaders, texts = ds2.get_final_ds(**data_params, k=k_val,
+            dataloaders = ds2.get_final_ds(**data_params, k=k_val,
                                            split=val_split, return_test=self.get_test_subset)
 
             tasks_data_dict[task]['train'] = dataloader_train
-            tasks_data_dict[task]['train_text'] = text_train
+            #tasks_data_dict[task]['train_text'] = text_train
 
             if memory_perc>0:
                 k_mem = max(1, int(len(dataloader_train) * self.batch_size * memory_perc) )
-                dataloader_mem, text_mem = ds2.get_final_ds(**data_params, k=k_mem, split='train')
+                dataloader_mem = ds2.get_final_ds(**data_params, k=k_mem, split='train')
                 tasks_data_dict[task]['train_mem'] = dataloader_mem
-                tasks_data_dict[task]['train_mem_text'] = text_mem
+                #tasks_data_dict[task]['train_mem_text'] = text_mem
 
             if self.get_test_subset:
                 dataloader_val, dataloader_test = dataloaders[0], dataloaders[1]
-                text_val, text_test = texts[0], texts[1]
+                # text_val, text_test = texts[0], texts[1]
                 tasks_data_dict[task]['val'] = dataloader_val
-                tasks_data_dict[task]['val_text'] = text_val
+                #tasks_data_dict[task]['val_text'] = text_val
                 tasks_data_dict[task]['test'] = dataloader_test
-                tasks_data_dict[task]['test_text'] = text_test
+                #tasks_data_dict[task]['test_text'] = text_test
             else:
                 tasks_data_dict[task]['val'] = dataloaders
-                tasks_data_dict[task]['val_text'] = texts
+                #tasks_data_dict[task]['val_text'] = texts
 
             if task == 'multirc' and k_val==-1:
                 self.multirc_idx = ds2.multirc_idx # saving multirc idx for later computation
@@ -475,7 +475,8 @@ class T5ContinualLearner:
         # print("Batch train text: ")
         # print(self.tasks_data_dict[task]['train'].dataset['text'])
         # print(batch['train_text'])
-        batch = {k: batch[k].to(self.device) if isinstance(batch[k], torch.Tensor) else batch[k] for k in batch}
+        batch = {k:batch[k].to(self.device) for k in batch}
+        # batch = {k: batch[k].to(self.device) if isinstance(batch[k], torch.Tensor) else batch[k] for k in batch}
         lm_labels = batch["target_ids"]
         lm_labels[lm_labels[:, :] == tokenizer.pad_token_id] = -100
 
@@ -486,6 +487,7 @@ class T5ContinualLearner:
         # TODO: from the raw input text
         #text = batch["train_text"]
         texts = [tokenizer.decode(ids) for ids in batch['source_ids']]
+        texts = [self.normalize_text(x) for x in texts]
         print("Texts: ")
         print(texts)
         similarity_embedding = self.getEmbeddingFromText(texts)
@@ -569,8 +571,8 @@ class T5ContinualLearner:
         model = self.model
         tokenizer = self.tokenizer
 
-        batch = {k: batch[k].to(self.device) if isinstance(batch[k], torch.Tensor) else batch[k] for k in batch}
-        # batch = {k: batch[k].to(self.device) for k in batch}
+        # batch = {k: batch[k].to(self.device) if isinstance(batch[k], torch.Tensor) else batch[k] for k in batch}
+        batch = {k: batch[k].to(self.device) for k in batch}
         lm_labels = batch["target_ids"]
         lm_labels[lm_labels[:, :] == tokenizer.pad_token_id] = -100
 
@@ -666,18 +668,18 @@ class T5ContinualLearner:
         corr, total, f1 = 0, 0, 0
         y_true, y_pred = [], []
 
-        val_text = self.tasks_data_dict[task]['val_text']
+        # val_text = self.tasks_data_dict[task]['val_text']
 
         for i, batch in enumerate(tqdm(dataloader_val)):
-            # batch = {k:batch[k].to(self.device) for k in batch}
-            batch = {k: batch[k].to(self.device) if isinstance(batch[k], torch.Tensor) else batch[k] for k in batch}
+            batch = {k:batch[k].to(self.device) for k in batch}
+            # batch = {k: batch[k].to(self.device) if isinstance(batch[k], torch.Tensor) else batch[k] for k in batch}
             inputs_embeds = model.encoder.embed_tokens(batch["source_ids"]).to(self.device)
 
-            batch_indices = batch['source_ids'].detach().cpu().numpy()  # Convert source_ids to CPU numpy array for indexing
-            batch_val_text = [val_text[i] for _ in range(batch_indices.shape[0])]
+            #batch_indices = batch['source_ids'].detach().cpu().numpy()  # Convert source_ids to CPU numpy array for indexing
+            #batch_val_text = [val_text[i] for _ in range(batch_indices.shape[0])]
   
             # Add val texts to the batch
-            batch['val_text'] = batch_val_text
+            #batch['val_text'] = batch_val_text
 
             if prompt!=None:
                 k = inputs_embeds.shape[0]
@@ -852,8 +854,8 @@ class T5ContinualLearner:
         target_len = self.task_to_target_len[task]
         dataloader_train = self.tasks_data_dict[task]['train']
         dataloader_val = self.tasks_data_dict[task]['val']
-        train_text = self.tasks_data_dict[task]['train_text']
-        val_text = self.tasks_data_dict[task]['val_text']
+        #train_text = self.tasks_data_dict[task]['train_text']
+        #val_text = self.tasks_data_dict[task]['val_text']
         
 
         val_acc = []
@@ -870,17 +872,17 @@ class T5ContinualLearner:
 
 
             for i, batch in enumerate(tqdm(dataloader_train)):
-                batch = {k: batch[k].to('cuda') if isinstance(batch[k], torch.Tensor) else batch[k] for k in batch}
-                # batch = {k:batch[k].to('cuda') for k in batch}
+                # batch = {k: batch[k].to('cuda') if isinstance(batch[k], torch.Tensor) else batch[k] for k in batch}
+                batch = {k:batch[k].to('cuda') for k in batch}
                 # Extract train texts corresponding to the source_ids indices
                 # shape (4, 512)
-                batch_indices = batch['source_ids'].detach().cpu().numpy()  # Convert source_ids to CPU numpy array for indexing
+                #batch_indices = batch['source_ids'].detach().cpu().numpy()  # Convert source_ids to CPU numpy array for indexing
                 
-                batch_train_text = [train_text[i] for _ in range(batch_indices.shape[0])]
+                #batch_train_text = [train_text[i] for _ in range(batch_indices.shape[0])]
 
             
                 # Add train texts to the batch
-                batch['train_text'] = batch_train_text
+                #batch['train_text'] = batch_train_text
 
                 # batch['train_text'] = [train_text[j] for j in batch['source_ids'].indices]
 
