@@ -960,7 +960,7 @@ class T5ContinualLearner:
                     results_dict['test'][task] = acc
             # saving results dict after each task
             np.save(os.path.join(save_path, 'results_dict.npy'), results_dict)
-
+            print("Test accuracy for task ", task, results_dict['test'])
         return results_dict
 
 
