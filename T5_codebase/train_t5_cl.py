@@ -106,7 +106,7 @@ if __name__ == "__main__":
         '--multitask',
         type=int,
         help='Whether to perform multi-task training',
-        default=0
+        default=1
     )
 
     parser.add_argument(

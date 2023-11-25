@@ -1024,10 +1024,11 @@ class T5ContinualLearner:
                                     self.task_to_target_len[test_task],
                                     print_outputs=True)
                 results_dict['test'][epoch][test_task] = acc
+                print("Test accuracy for task: ", test_task, results_dict['test'])
 
             if save_path!='':
                 np.save(os.path.join(save_path, 'results_dict.npy'), results_dict)
             pbar.close()
-
+            
         return results_dict 
     
