@@ -44,16 +44,10 @@ This is our code structure:
 
 ```
 |_T5_codebase/
+      |experiment.sh --> Example experiments for tasks in different domains. 
       |_t5_dataset.py --> T5 Dataset class for reading and processing datasets
       |_t5_continual.py --> Model class for T5 with prompt tuning and continual learning functions
       |_train_t5_cl.py --> Code to run continual learning experiments with T5
-      
-|_BERT_codebase/
-      |_dataset_utils.py --> BERT Dataset class for reading and processing datasets
-      |_model_utils.py --> Model class for BERT with prompt tuning and fine-tuning functions
-      |_continual_learning_utils.py --> Continual Learner class for Progressive Prompts (with BERT)
-      |_continual_learning_one_head.py --> Continual Learner class for regularization-based CL approaches for BERT 
-      |_train_cl2.py --> Code to run continual learning experiments with BERT
       
 |_datasets/src/data/ --> CL datasets from Zhang et. al., 2015
       |_amazon --> Amazon reviews (zip archive, since dataset is not available through HuggingFace datasets)
@@ -122,33 +116,8 @@ In the example above, we froze weights and trained a prompt of size 10 (per task
 For other arguments and their descriptions, please check ```T5_codebase/train_t5_cl.py``` file.
 
 
-To train Progressive Prompts on the same four tasks with BERT-base:
-```bash
-cd BERT_codebase
-
-python train_cl2.py --task_list imdb cb sst2 dbpedia_14  --select_k_per_class 1000 \
---lr 3e-5 --num_epochs 50 --freeze_weights 1 --freeze_except word_embeddings \
---prompt_tuning 1 --prefix_len 10 --seq_len 450 --one_head 0 \
---model_name bert-base-uncased --early_stopping 1 \
---save_name BERT_experiment --save_dir my_path_to_save_directory
-```
-
-Note how soft prompts for BERT need to be trained with smaller learning rate and higher number of epochs. 
-We also have some other BERT-specific arguments, one_head controls whether to use a separate head for each task, freeze_except allows to freeze all weights except word embeddings (since we include prompt tokens into vocabulary for BERT implementation), seq_len controls max input length (without prompt), prompt_tuning flag signals if we are doing prompt tuning.
-For other arguments and their descriptions, please check ```BERT_codebase/train_cl2.py``` file.
-
-<!--
-The configuration keys are as follows:
-| Argument |   Default     |  Description |
-|----------|:-------------:|------:   |
-| col 1 is |  left-aligned | $1600    |
-| col 2 is |    centered   |   $12.   |
-| col 3 is | right-aligned |    $1    |
--->
-
-
 ## :raising_hand: Questions
-If you have any questions about the paper or code, please contact Anastasia Razdaibiedina (anastasia.razdaibiedina[at]mail.utoronto.ca) or open an issue. 
+If you have any questions about the paper or code, please contact Ty Feng (tyfeng[at]ucdavis.edu), Raj Kunamaneni (rkunamaneni[at]ucdavis.edu), Srivatsan Srikanth (ssrikanth[at]ucdavis.edu), Henry Chou (hechou[at]ucdavis.edu) or open an issue. 
 
 ## :books: Citation
 If you use our code in your research, please cite our work:
