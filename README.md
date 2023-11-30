@@ -20,7 +20,7 @@ Instead of concatenating every prompt from prior tasks like what Progressive Pro
 
 We used the T5 language model for our work. We based our Selective Progressive Prompts implementation on the original Progressive Prompts implementation of Anastasia Razdaibiedina, Yuning Mao, Rui Hou, Madian Khabsa, Mike Lewis and Amjad Almahairi. ["Progressive Prompts: Continual Learning for Language Models"](https://arxiv.org/abs/2301.12314), ICLR 2023.
 
-![Selective Progressive Prompts](/images/Selective_illustration.pdf)
+![Selective Progressive Prompts](/images/Selective_illustration.png)
 Figure: *Illustrating our proposed method **Selective Progressive Prompts**. We use a selection criteria to ensure the relevancy of concatenated prompts, which helps with forward transfer learning on a sequence of hetereogeneous tasks.*
 
 ## :question: What's in this repository
