@@ -12,7 +12,7 @@
 
 
 ## :star2: Introduction
-We introduce *Selective Progressive Prompts** – a modified version of Progressive Prompts for Continual Learning in language models. In Selective Progressive Prompts, we learn a set of virtual tokens, or ***soft prompt*** ([B. Lester et al., EMNLP 2021](https://arxiv.org/pdf/2104.08691.pdf)), for each incoming task and sequentially concatenate it with previously learned prompts iff the incoming task is similar enough to previous tasks. Otherwise, we learn a separate per-task prompt using prompt tuning ([B. Lester et al., EMNLP 2021](https://arxiv.org/pdf/2104.08691.pdf)). 
+We introduce *Selective Progressive Prompts* – a modified version of Progressive Prompts for Continual Learning in language models. In Selective Progressive Prompts, we learn a set of virtual tokens, or ***soft prompt*** ([B. Lester et al., EMNLP 2021](https://arxiv.org/pdf/2104.08691.pdf)), for each incoming task and sequentially concatenate it with previously learned prompts iff the incoming task is similar enough to previous tasks. Otherwise, we learn a separate per-task prompt using prompt tuning ([B. Lester et al., EMNLP 2021](https://arxiv.org/pdf/2104.08691.pdf)). 
 
 
 ### Our Selective Progressive Prompts Approach
@@ -22,6 +22,9 @@ We used the T5 language model for our work. We based our Selective Progressive P
 
 ![Selective Progressive Prompts](/images/Selective_illustration.png)
 Figure: *Illustrating our proposed method **Selective Progressive Prompts**. We use a selection criteria to ensure the relevancy of concatenated prompts, which helps with forward transfer learning on a sequence of hetereogeneous tasks.*
+
+Our paper: ![Selective Progressive Prompts Paper](Selective_Progressive_Prompts.pdf)
+Our presentation slides: ![Selective Progressive Prompts Presentation](Selective_Presentation.pdf)
 
 ## :question: What's in this repository
 
@@ -40,7 +43,7 @@ This is our code structure:
       (the rest of datasets can be either accessed through HuggingFace or downloaded by instructions below)
 ```
 
-**Note (([Razdaibiedina et al., ICLR 2023](https://arxiv.org/abs/2301.12314)))**: we access most of the datasets for our experiments through HuggingFace datasets, including CL datasets from Zhang et. al., 2015. Since only one CL datasets from Zhang et. al. is not available on HuggingFace - Amazon Reviews, we uploaded its archived train / test data to ```datasets/src/data/amazon/```. To access the rest of CL datasets (Yelp, Yahoo, AG, DbPedia), you can either use their HuggingFace names in our training script or download them from [http://goo.gl/JyCnZq](http://goo.gl/JyCnZq) to ```datasets/src/data/```.
+**Note ([Razdaibiedina et al., ICLR 2023](https://arxiv.org/abs/2301.12314))**: we access most of the datasets for our experiments through HuggingFace datasets, including CL datasets from Zhang et. al., 2015. Since only one CL datasets from Zhang et. al. is not available on HuggingFace - Amazon Reviews, we uploaded its archived train / test data to ```datasets/src/data/amazon/```. To access the rest of CL datasets (Yelp, Yahoo, AG, DbPedia), you can either use their HuggingFace names in our training script or download them from [http://goo.gl/JyCnZq](http://goo.gl/JyCnZq) to ```datasets/src/data/```.
 
 ## :wrench: Installation
 
@@ -88,7 +91,7 @@ conda activate nlp
 
 ## :zap: How to run 
 
-For example, to run Progressive Prompts with T5-large on four tasks (IMDb, CB, SST-2 and DbPedia):
+For example, to run Selective Progressive Prompts with T5-large on four tasks (IMDb, CB, SST-2 and DbPedia):
 ```bash
 cd T5_codebase
 mkdir my_path_to_save_directory
